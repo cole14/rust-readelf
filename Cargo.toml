@@ -1,0 +1,17 @@
+[package]
+name = "readelf"
+version = "0.0.1"
+authors = ["Christopher Cole <chris.cole.09@gmail.com>"]
+license = "MIT"
+homepage = "https://github.com/cole14/rust-readelf/"
+repository = "https://github.com/cole14/rust-readelf/"
+description = "A pure-rust implementation of the binutils utility readelf"
+keywords = ["elf","readelf"]
+readme = "README.md"
+
+[[bin]]
+name = "rust-readelf"
+
+[dependencies]
+elf = "0.*"
+
