@@ -1,34 +1,50 @@
 extern crate elf;
+extern crate argparse;
 
-use std::env;
 use std::path::PathBuf;
+use argparse::{ArgumentParser, StoreTrue, Store};
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let paths: Vec<PathBuf> = if args.len() == 1 {
-        vec!(From::from("stress"))
-    } else {
-        let mut i = args.into_iter();
-        i.next();
-        i.map(|arg| From::from(arg) )
-            .collect()
-    };
-    for path in paths.into_iter() {
-        let file = match elf::File::open_path(&path) {
-            Ok(f) => f,
-            Err(e) => panic!("Error: {:?}", e),
-        };
-        println!("Debug-print ELF file:");
-        println!("{:?}", file);
-        println!("");
-        println!("Pretty-print ELF file:");
-        println!("{}", file);
+    let mut file_header = false;
+    let mut program_headers = false;
+    let mut section_headers = false;
+    let mut filename = "".to_string();
+    {
+        let mut ap = ArgumentParser::new();
+        ap.set_description(
+            "Display information about the contents of ELF files");
+        ap.refer(&mut file_header)
+            .add_option(&["-h", "--file-header"], StoreTrue,
+                        "Display the ELF file header");
+        ap.refer(&mut program_headers)
+            .add_option(&["-l", "--program-headers"], StoreTrue,
+                        "Display the program headers");
+        ap.refer(&mut section_headers)
+            .add_option(&["-S", "--section-headers"], StoreTrue,
+                        "Display the section headers");
+        ap.refer(&mut filename)
+            .add_option(&["-f", "--file-name"], Store,
+                        "ELF file to inspect");
+        ap.parse_args_or_exit();
+    }
 
-        println!("Getting the .text section");
-        let text = file.get_section(".text");
-        match text {
-            Some(s) => println!("shdr: {}", s),
-            None => println!("Failed to look up .text section!"),
+    let path: PathBuf = From::from(filename);
+    let file = match elf::File::open_path(&path) {
+        Ok(f) => f,
+        Err(e) => panic!("Error: {:?}", e),
+    };
+
+    if file_header {
+        println!("{}", file.ehdr);
+    }
+    if program_headers {
+        for phdr in file.phdrs {
+            println!("{}", phdr);
+        }
+    }
+    if section_headers {
+        for s in file.sections {
+            println!("{}", s.shdr);
         }
     }
 }

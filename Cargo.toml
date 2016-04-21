@@ -13,5 +13,6 @@ readme = "README.md"
 name = "rust-readelf"
 
 [dependencies]
+argparse = "0.*"
 elf = "0.*"
 
