@@ -4,7 +4,8 @@
 Pure-Rust implementation of the binutils utility readelf
 
 ## Options Usage:
-```$ rust-readelf --help
+```sh
+$ rust-readelf --help
 Usage:
     ./target/debug/rust-readelf [OPTIONS]
 
