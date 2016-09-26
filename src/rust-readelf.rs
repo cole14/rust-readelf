@@ -8,6 +8,7 @@ fn main() {
     let mut file_header = false;
     let mut program_headers = false;
     let mut section_headers = false;
+    let mut headers = false;
     let mut filename = "".to_string();
     {
         let mut ap = ArgumentParser::new();
@@ -22,6 +23,9 @@ fn main() {
         ap.refer(&mut section_headers)
             .add_option(&["-S", "--section-headers"], StoreTrue,
                         "Display the section headers");
+        ap.refer(&mut headers)
+            .add_option(&["-e", "--headers"], StoreTrue,
+                        "Equivalent to: -h -l -S");
         ap.refer(&mut filename)
             .add_option(&["-f", "--file-name"], Store,
                         "ELF file to inspect");
@@ -33,6 +37,12 @@ fn main() {
         Ok(f) => f,
         Err(e) => panic!("Error: {:?}", e),
     };
+
+    if headers {
+        file_header = true;
+        program_headers = true;
+        section_headers = true;
+    }
 
     if file_header {
         println!("{}", file.ehdr);
