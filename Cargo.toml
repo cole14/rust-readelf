@@ -14,6 +14,6 @@ name = "rust-readelf"
 path = "src/rust-readelf.rs"
 
 [dependencies]
-argparse = "0.*"
+clap = { version = "4", features = ["derive", "unicode"] }
 elf = "0.*"
 

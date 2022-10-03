@@ -1,58 +1,46 @@
+extern crate clap;
 extern crate elf;
-extern crate argparse;
 
 use std::path::PathBuf;
-use argparse::{ArgumentParser, StoreTrue, Store};
+use clap::Parser;
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+   #[arg(short, long)]
+   file_name: String,
+
+   #[arg(long)]
+   file_header: bool,
+
+   #[arg(long)]
+   program_headers: bool,
+
+   #[arg(long)]
+   section_headers: bool,
+}
 
 fn main() {
-    let mut file_header = false;
-    let mut program_headers = false;
-    let mut section_headers = false;
-    let mut headers = false;
-    let mut filename = "".to_string();
-    {
-        let mut ap = ArgumentParser::new();
-        ap.set_description(
-            "Display information about the contents of ELF files");
-        ap.refer(&mut file_header)
-            .add_option(&["-h", "--file-header"], StoreTrue,
-                        "Display the ELF file header");
-        ap.refer(&mut program_headers)
-            .add_option(&["-l", "--program-headers"], StoreTrue,
-                        "Display the program headers");
-        ap.refer(&mut section_headers)
-            .add_option(&["-S", "--section-headers"], StoreTrue,
-                        "Display the section headers");
-        ap.refer(&mut headers)
-            .add_option(&["-e", "--headers"], StoreTrue,
-                        "Equivalent to: -h -l -S");
-        ap.refer(&mut filename)
-            .add_option(&["-f", "--file-name"], Store,
-                        "ELF file to inspect");
-        ap.parse_args_or_exit();
-    }
+    let args = Args::parse();
 
-    let path: PathBuf = From::from(filename);
+    let path: PathBuf = From::from(args.file_name);
     let file = match elf::File::open_path(&path) {
         Ok(f) => f,
         Err(e) => panic!("Error: {:?}", e),
     };
 
-    if headers {
-        file_header = true;
-        program_headers = true;
-        section_headers = true;
-    }
-
-    if file_header {
+    if args.file_header {
         println!("{}", file.ehdr);
     }
-    if program_headers {
+
+    if args.program_headers {
         for phdr in file.phdrs {
             println!("{}", phdr);
         }
     }
-    if section_headers {
+
+    if args.section_headers {
         for s in file.sections {
             println!("{}", s.shdr);
         }
