@@ -11,6 +11,7 @@ readme = "README.md"
 
 [[bin]]
 name = "rust-readelf"
+path = "src/rust-readelf.rs"
 
 [dependencies]
 argparse = "0.*"
