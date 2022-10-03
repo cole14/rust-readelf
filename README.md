@@ -6,17 +6,16 @@ Pure-Rust implementation of the binutils utility readelf
 ## Options Usage:
 ```sh
 $ rust-readelf --help
-Usage:
-    ./target/debug/rust-readelf [OPTIONS]
+A pure-rust implementation of the binutils utility readelf
 
-Display information about the contents of ELF files
+Usage: rust-readelf [OPTIONS] --file-name <FILE_NAME>
 
-optional arguments:
-  -h,--help             show this help message and exit
-  -h,--file-header      Display the ELF file header
-  -l,--program-headers  Display the program headers
-  -S,--section-headers  Display the section headers
-  -f,--file-name FILE_NAME
-                        ELF file to inspect
+Options:
+  -f, --file-name <FILE_NAME>
+      --file-header
+      --program-headers
+      --section-headers
+  -h, --help                   Print help information
+  -V, --version                Print version information
 ```
 
