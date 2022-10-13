@@ -74,7 +74,7 @@ fn main() {
             Some(tables) => {
                 let (symtab, strtab) = tables;
                 for (idx, sym) in symtab.iter().enumerate() {
-                    let name = match strtab.get(sym.name as usize) {
+                    let name = match strtab.get(sym.st_name as usize) {
                         Ok(name) => name,
                         Err(e) => panic!("Error: {:?}", e),
                     };
