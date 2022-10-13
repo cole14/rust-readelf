@@ -45,14 +45,22 @@ fn main() {
     }
 
     if args.program_headers {
-        for phdr in &elf_file.phdrs {
-            println!("{}", phdr);
+        for (idx, phdr) in elf_file.phdrs.iter().enumerate() {
+            println!("{idx}: {}", phdr);
         }
     }
 
     if args.section_headers {
-        for s in elf_file.sections.iter() {
-            println!("{}", s.shdr);
+        for (idx, s) in elf_file.sections.iter().enumerate() {
+            let strtab = match elf_file.section_strtab() {
+                Ok(strtab) => strtab,
+                Err(e) => panic!("Error: {:?}", e),
+            };
+            let name = match strtab.get(s.shdr.sh_name as usize) {
+                Ok(name) => name,
+                Err(e) => panic!("Error: {:?}", e),
+            };
+            println!("{idx}: {} {}", s.shdr, name);
         }
     }
 
@@ -78,7 +86,7 @@ fn main() {
                         Ok(name) => name,
                         Err(e) => panic!("Error: {:?}", e),
                     };
-                    println!("{idx}: {:?} {}", sym, name);
+                    println!("{idx}: {} {}", sym, name);
                 }
             }
             None => (),
