@@ -1,7 +1,13 @@
 extern crate clap;
+extern crate comfy_table;
 extern crate elf;
 
 use clap::Parser;
+use comfy_table::{Cell, Table};
+use elf::section::SectionTable;
+use elf::segment::ProgramHeader;
+use elf::string_table::StringTable;
+use elf::symbol::SymbolTable;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -26,6 +32,93 @@ struct Args {
     dynamic_symbols: bool,
 }
 
+fn print_program_headers(phdrs: &Vec<ProgramHeader>) {
+    let mut table = Table::new();
+    table.set_header([
+        "p_type", "p_offset", "p_vaddr", "p_paddr", "p_align", "p_filesz", "p_memsz", "p_flags",
+    ]);
+    for phdr in phdrs.iter() {
+        let cells: Vec<Cell> = vec![
+            phdr.p_type.into(),
+            phdr.p_offset.into(),
+            phdr.p_vaddr.into(),
+            phdr.p_paddr.into(),
+            phdr.p_align.into(),
+            phdr.p_filesz.into(),
+            phdr.p_memsz.into(),
+            phdr.p_flags.into(),
+        ];
+        table.add_row(cells);
+    }
+    println!("{table}");
+}
+
+fn print_section_table(sections: &SectionTable, strtab: &StringTable) {
+    let mut table = Table::new();
+    table.set_header([
+        "name",
+        "sh_type",
+        "sh_flags",
+        "sh_addr",
+        "sh_offset",
+        "sh_size",
+        "sh_link",
+        "sh_info",
+        "sh_addralign",
+        "sh_entsize",
+    ]);
+    for s in sections.iter() {
+        let name = match strtab.get(s.shdr.sh_name as usize) {
+            Ok(name) => name,
+            Err(e) => panic!("Error: {:?}", e),
+        };
+        let cells: Vec<Cell> = vec![
+            name.into(),
+            s.shdr.sh_type.into(),
+            s.shdr.sh_flags.into(),
+            s.shdr.sh_addr.into(),
+            s.shdr.sh_offset.into(),
+            s.shdr.sh_size.into(),
+            s.shdr.sh_link.into(),
+            s.shdr.sh_info.into(),
+            s.shdr.sh_addralign.into(),
+            s.shdr.sh_entsize.into(),
+        ];
+        table.add_row(cells);
+    }
+    println!("{table}");
+}
+
+fn print_symbol_table(symtab: &SymbolTable, strtab: &StringTable) {
+    let mut table = Table::new();
+    table.set_header([
+        "name",
+        "value",
+        "size",
+        "type",
+        "bind",
+        "visibility",
+        "shndx",
+    ]);
+    for sym in symtab.iter() {
+        let name = match strtab.get(sym.st_name as usize) {
+            Ok(name) => name,
+            Err(e) => panic!("Error: {:?}", e),
+        };
+        let cells: Vec<Cell> = vec![
+            name.into(),
+            sym.st_value.into(),
+            sym.st_size.into(),
+            sym.st_symtype().into(),
+            sym.st_bind().into(),
+            sym.st_vis().into(),
+            sym.st_shndx.into(),
+        ];
+        table.add_row(cells);
+    }
+    println!("{table}");
+}
+
 fn main() {
     let args = Args::parse();
 
@@ -41,27 +134,20 @@ fn main() {
     };
 
     if args.file_header {
-        println!("{}", elf_file.ehdr);
+        let ehdr = &elf_file.ehdr;
+        println!("{ehdr}");
     }
 
     if args.program_headers {
-        for (idx, phdr) in elf_file.phdrs.iter().enumerate() {
-            println!("{idx}: {}", phdr);
-        }
+        print_program_headers(&elf_file.phdrs);
     }
 
     if args.section_headers {
-        for (idx, s) in elf_file.sections.iter().enumerate() {
-            let strtab = match elf_file.section_strtab() {
-                Ok(strtab) => strtab,
-                Err(e) => panic!("Error: {:?}", e),
-            };
-            let name = match strtab.get(s.shdr.sh_name as usize) {
-                Ok(name) => name,
-                Err(e) => panic!("Error: {:?}", e),
-            };
-            println!("{idx}: {} {}", s.shdr, name);
-        }
+        let strtab = match elf_file.section_strtab() {
+            Ok(strtab) => strtab,
+            Err(e) => panic!("Error: {:?}", e),
+        };
+        print_section_table(&elf_file.sections, &strtab);
     }
 
     if args.symbols || args.dynamic_symbols {
@@ -81,13 +167,7 @@ fn main() {
         match tables {
             Some(tables) => {
                 let (symtab, strtab) = tables;
-                for (idx, sym) in symtab.iter().enumerate() {
-                    let name = match strtab.get(sym.st_name as usize) {
-                        Ok(name) => name,
-                        Err(e) => panic!("Error: {:?}", e),
-                    };
-                    println!("{idx}: {} {}", sym, name);
-                }
+                print_symbol_table(&symtab, &strtab);
             }
             None => (),
         }

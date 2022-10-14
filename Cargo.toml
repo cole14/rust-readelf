@@ -15,5 +15,6 @@ path = "src/rust-readelf.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive", "unicode"] }
+comfy-table = "6.1.0"
 elf = "^0.1.0"
 
