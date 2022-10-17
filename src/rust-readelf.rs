@@ -139,7 +139,11 @@ fn main() {
     }
 
     if args.program_headers {
-        print_program_headers(&elf_file.phdrs);
+        let phdrs = match elf_file.segments() {
+            Ok(phdrs) => phdrs,
+            Err(e) => panic!("Error: {:?}", e),
+        };
+        print_program_headers(phdrs);
     }
 
     if args.section_headers {
