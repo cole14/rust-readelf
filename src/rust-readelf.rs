@@ -151,7 +151,11 @@ fn main() {
             Ok(strtab) => strtab,
             Err(e) => panic!("Error: {:?}", e),
         };
-        print_section_table(&elf_file.sections, &strtab);
+        let sections = match elf_file.sections() {
+            Ok(sections) => sections,
+            Err(e) => panic!("Error: {:?}", e),
+        };
+        print_section_table(&sections, &strtab);
     }
 
     if args.symbols || args.dynamic_symbols {
