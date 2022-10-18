@@ -5,7 +5,7 @@ extern crate elf;
 use clap::Parser;
 use comfy_table::{Cell, Table};
 use elf::section::SectionTable;
-use elf::segment::ProgramHeader;
+use elf::segment::SegmentIterator;
 use elf::string_table::StringTable;
 use elf::symbol::SymbolTable;
 use std::path::PathBuf;
@@ -32,12 +32,12 @@ struct Args {
     dynamic_symbols: bool,
 }
 
-fn print_program_headers(phdrs: &Vec<ProgramHeader>) {
+fn print_program_headers(phdrs: &mut SegmentIterator) {
     let mut table = Table::new();
     table.set_header([
         "p_type", "p_offset", "p_vaddr", "p_paddr", "p_align", "p_filesz", "p_memsz", "p_flags",
     ]);
-    for phdr in phdrs.iter() {
+    for phdr in phdrs {
         let cells: Vec<Cell> = vec![
             phdr.p_type.into(),
             phdr.p_offset.into(),
@@ -128,7 +128,7 @@ fn main() {
         Err(e) => panic!("Error: {:?}", e),
     };
 
-    let elf_file = match elf::File::open_stream(&mut io) {
+    let mut elf_file = match elf::File::open_stream(&mut io) {
         Ok(f) => f,
         Err(e) => panic!("Error: {:?}", e),
     };
@@ -139,11 +139,11 @@ fn main() {
     }
 
     if args.program_headers {
-        let phdrs = match elf_file.segments() {
+        let mut phdrs = match elf_file.segments() {
             Ok(phdrs) => phdrs,
             Err(e) => panic!("Error: {:?}", e),
         };
-        print_program_headers(phdrs);
+        print_program_headers(&mut phdrs);
     }
 
     if args.section_headers {
