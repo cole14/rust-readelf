@@ -68,10 +68,9 @@ fn print_section_table(sections: &SectionTable, strtab: &StringTable) {
         "sh_entsize",
     ]);
     for s in sections.iter() {
-        let name = match strtab.get(s.shdr.sh_name as usize) {
-            Ok(name) => name,
-            Err(e) => panic!("Error: {:?}", e),
-        };
+        let name = strtab
+            .get(s.shdr.sh_name as usize)
+            .expect("Failed to get name from string table");
         let cells: Vec<Cell> = vec![
             name.into(),
             s.shdr.sh_type.into(),
@@ -101,10 +100,9 @@ fn print_symbol_table(symtab: &SymbolTable, strtab: &StringTable) {
         "shndx",
     ]);
     for sym in symtab.iter() {
-        let name = match strtab.get(sym.st_name as usize) {
-            Ok(name) => name,
-            Err(e) => panic!("Error: {:?}", e),
-        };
+        let name = strtab
+            .get(sym.st_name as usize)
+            .expect("Failed to get name from string table");
         let cells: Vec<Cell> = vec![
             name.into(),
             sym.st_value.into(),
@@ -123,15 +121,10 @@ fn main() {
     let args = Args::parse();
 
     let path: PathBuf = From::from(args.file_name);
-    let mut io = match std::fs::File::open(path) {
-        Ok(f) => f,
-        Err(e) => panic!("Error: {:?}", e),
-    };
+    let file_data = std::fs::read(path).expect("Failed to read file contents");
+    let slice = file_data.as_slice();
 
-    let mut elf_file = match elf::File::open_stream(&mut io) {
-        Ok(f) => f,
-        Err(e) => panic!("Error: {:?}", e),
-    };
+    let mut elf_file = elf::File::open_stream(slice).expect("Failed to open ELF stream");
 
     if args.file_header {
         let ehdr = &elf_file.ehdr;
@@ -139,37 +132,28 @@ fn main() {
     }
 
     if args.program_headers {
-        let mut phdrs = match elf_file.segments() {
-            Ok(phdrs) => phdrs,
-            Err(e) => panic!("Error: {:?}", e),
-        };
+        let mut phdrs = elf_file.segments().expect("Failed to parse Segment Table");
         print_program_headers(&mut phdrs);
     }
 
     if args.section_headers {
-        let strtab = match elf_file.section_strtab() {
-            Ok(strtab) => strtab,
-            Err(e) => panic!("Error: {:?}", e),
-        };
-        let sections = match elf_file.sections() {
-            Ok(sections) => sections,
-            Err(e) => panic!("Error: {:?}", e),
-        };
+        let strtab = elf_file
+            .section_strtab()
+            .expect("Failed to get section string table");
+        let sections = elf_file.sections().expect("Failed to parse Section Table");
         print_section_table(&sections, &strtab);
     }
 
     if args.symbols || args.dynamic_symbols {
         let tables: Option<(elf::symbol::SymbolTable, elf::string_table::StringTable)>;
         if args.symbols {
-            tables = match elf_file.symbol_table() {
-                Ok(tables) => tables,
-                Err(e) => panic!("Error: {:?}", e),
-            }
+            tables = elf_file
+                .symbol_table()
+                .expect("Failed to get .symtab string table");
         } else {
-            tables = match elf_file.dynamic_symbol_table() {
-                Ok(tables) => tables,
-                Err(e) => panic!("Error: {:?}", e),
-            }
+            tables = elf_file
+                .dynamic_symbol_table()
+                .expect("Failed to get .dynsym string table");
         }
 
         match tables {
