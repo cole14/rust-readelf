@@ -120,10 +120,10 @@ fn main() {
     let args = Args::parse();
 
     let path: PathBuf = From::from(args.file_name);
-    let file_data = std::fs::read(path).expect("Failed to read file contents");
-    let slice = file_data.as_slice();
+    let io = std::fs::File::open(path).expect("Could not open file.");
+    let mut c_io = elf::CachedReadBytes::new(io);
 
-    let mut elf_file = elf::File::open_stream(slice).expect("Failed to open ELF stream");
+    let mut elf_file = elf::File::open_stream(&mut c_io).expect("Failed to open ELF stream");
 
     if args.file_header {
         let ehdr = &elf_file.ehdr;

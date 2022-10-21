@@ -1,6 +1,6 @@
 [package]
 name = "readelf"
-version = "0.0.4"
+version = "0.0.5"
 authors = ["Christopher Cole <chris.cole.09@gmail.com>"]
 license = "MIT"
 homepage = "https://github.com/cole14/rust-readelf/"
@@ -15,6 +15,6 @@ path = "src/rust-readelf.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive", "unicode"] }
-comfy-table = "6.1.0"
-elf = "^0.2.0"
+comfy-table = "6.1.1"
+elf = "^0.3.0"
 
