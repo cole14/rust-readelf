@@ -4,7 +4,6 @@ extern crate elf;
 
 use clap::Parser;
 use comfy_table::{Cell, Table};
-use elf::section::SectionTable;
 use elf::segment::SegmentIterator;
 use elf::string_table::StringTable;
 use elf::symbol::SymbolTable;
@@ -53,7 +52,7 @@ fn print_program_headers(phdrs: &mut SegmentIterator) {
     println!("{table}");
 }
 
-fn print_section_table(sections: &SectionTable, strtab: &StringTable) {
+fn print_section_table(sections: Vec<elf::section::SectionHeader>, strtab: &StringTable) {
     let mut table = Table::new();
     table.set_header([
         "name",
@@ -67,21 +66,21 @@ fn print_section_table(sections: &SectionTable, strtab: &StringTable) {
         "sh_addralign",
         "sh_entsize",
     ]);
-    for s in sections.iter() {
+    for shdr in sections.iter() {
         let name = strtab
-            .get(s.shdr.sh_name as usize)
+            .get(shdr.sh_name as usize)
             .expect("Failed to get name from string table");
         let cells: Vec<Cell> = vec![
             name.into(),
-            s.shdr.sh_type.into(),
-            s.shdr.sh_flags.into(),
-            s.shdr.sh_addr.into(),
-            s.shdr.sh_offset.into(),
-            s.shdr.sh_size.into(),
-            s.shdr.sh_link.into(),
-            s.shdr.sh_info.into(),
-            s.shdr.sh_addralign.into(),
-            s.shdr.sh_entsize.into(),
+            shdr.sh_type.into(),
+            shdr.sh_flags.into(),
+            shdr.sh_addr.into(),
+            shdr.sh_offset.into(),
+            shdr.sh_size.into(),
+            shdr.sh_link.into(),
+            shdr.sh_info.into(),
+            shdr.sh_addralign.into(),
+            shdr.sh_entsize.into(),
         ];
         table.add_row(cells);
     }
@@ -137,11 +136,14 @@ fn main() {
     }
 
     if args.section_headers {
+        let shdrs: Vec<elf::section::SectionHeader> = elf_file
+            .section_headers()
+            .expect("Failed to parse Section Table")
+            .collect();
         let strtab = elf_file
             .section_strtab()
             .expect("Failed to get section string table");
-        let sections = elf_file.sections().expect("Failed to parse Section Table");
-        print_section_table(&sections, &strtab);
+        print_section_table(shdrs, &strtab);
     }
 
     if args.symbols || args.dynamic_symbols {
