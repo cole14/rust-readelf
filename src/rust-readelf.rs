@@ -52,7 +52,7 @@ fn print_program_headers(phdrs: &mut SegmentIterator) {
     println!("{table}");
 }
 
-fn print_section_table(sections: Vec<elf::section::SectionHeader>, strtab: &StringTable) {
+fn print_section_table(sections: elf::section::SectionHeaderIterator, strtab: StringTable) {
     let mut table = Table::new();
     table.set_header([
         "name",
@@ -66,7 +66,7 @@ fn print_section_table(sections: Vec<elf::section::SectionHeader>, strtab: &Stri
         "sh_addralign",
         "sh_entsize",
     ]);
-    for shdr in sections.iter() {
+    for shdr in sections {
         let name = strtab
             .get(shdr.sh_name as usize)
             .expect("Failed to get name from string table");
@@ -121,9 +121,9 @@ fn main() {
 
     let path: PathBuf = From::from(args.file_name);
     let io = std::fs::File::open(path).expect("Could not open file.");
-    let mut c_io = elf::CachedReadBytes::new(io);
 
-    let mut elf_file = elf::File::open_stream(&mut c_io).expect("Failed to open ELF stream");
+    let mut elf_file =
+        elf::File::open_stream(elf::CachedReadBytes::new(io)).expect("Failed to open ELF stream");
 
     if args.file_header {
         let ehdr = &elf_file.ehdr;
@@ -136,14 +136,10 @@ fn main() {
     }
 
     if args.section_headers {
-        let shdrs: Vec<elf::section::SectionHeader> = elf_file
-            .section_headers()
-            .expect("Failed to parse Section Table")
-            .collect();
-        let strtab = elf_file
-            .section_strtab()
-            .expect("Failed to get section string table");
-        print_section_table(shdrs, &strtab);
+        let (shdrs, strtab) = elf_file
+            .section_headers_with_strtab()
+            .expect("Failed to read section table and string table");
+        print_section_table(shdrs, strtab);
     }
 
     if args.symbols || args.dynamic_symbols {
