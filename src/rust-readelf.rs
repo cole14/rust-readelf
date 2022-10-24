@@ -4,6 +4,7 @@ extern crate elf;
 
 use clap::Parser;
 use comfy_table::{Cell, Table};
+use elf::note::NoteIterator;
 use elf::segment::SegmentIterator;
 use elf::string_table::StringTable;
 use elf::symbol::SymbolTable;
@@ -29,6 +30,9 @@ struct Args {
 
     #[arg(long)]
     dynamic_symbols: bool,
+
+    #[arg(long)]
+    notes: bool,
 }
 
 fn print_program_headers(phdrs: &mut SegmentIterator) {
@@ -116,6 +120,20 @@ fn print_symbol_table(symtab: &SymbolTable, strtab: &StringTable) {
     println!("{table}");
 }
 
+fn print_notes(notes: NoteIterator) {
+    let mut table = Table::new();
+    table.set_header(["type", "name", "desc"]);
+    for note in notes {
+        let cells: Vec<Cell> = vec![
+            note.n_type.into(),
+            note.name.into(),
+            format!("{:02X?}", note.desc).into(),
+        ];
+        table.add_row(cells);
+    }
+    println!("{table}");
+}
+
 fn main() {
     let args = Args::parse();
 
@@ -165,6 +183,22 @@ fn main() {
                 print_symbol_table(&symtab, &strtab);
             }
             None => (),
+        }
+    }
+
+    if args.notes {
+        let shdrs: Vec<elf::section::SectionHeader> = elf_file
+            .section_headers()
+            .expect("Failed to parse section headers")
+            .collect();
+        for ref shdr in shdrs {
+            if shdr.sh_type != elf::gabi::SHT_NOTE {
+                continue;
+            }
+            let notes = elf_file
+                .section_data_as_notes(shdr)
+                .expect("Failed to read notes section");
+            print_notes(notes);
         }
     }
 }
