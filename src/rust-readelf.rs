@@ -142,18 +142,23 @@ fn main() {
         print_section_table(shdrs, strtab);
     }
 
-    if args.symbols || args.dynamic_symbols {
-        let tables: Option<(elf::symbol::SymbolTable, elf::string_table::StringTable)>;
-        if args.symbols {
-            tables = elf_file
-                .symbol_table()
-                .expect("Failed to get .symtab string table");
-        } else {
-            tables = elf_file
-                .dynamic_symbol_table()
-                .expect("Failed to get .dynsym string table");
+    if args.symbols {
+        let tables = elf_file
+            .symbol_table()
+            .expect("Failed to get .symtab string table");
+        match tables {
+            Some(tables) => {
+                let (symtab, strtab) = tables;
+                print_symbol_table(&symtab, &strtab);
+            }
+            None => (),
         }
+    }
 
+    if args.dynamic_symbols {
+        let tables = elf_file
+            .dynamic_symbol_table()
+            .expect("Failed to get .symtab string table");
         match tables {
             Some(tables) => {
                 let (symtab, strtab) = tables;
