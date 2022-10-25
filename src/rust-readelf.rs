@@ -6,6 +6,7 @@ use clap::Parser;
 use comfy_table::{Cell, Table};
 use elf::dynamic::DynIterator;
 use elf::note::NoteIterator;
+use elf::relocation::{RelIterator, RelaIterator};
 use elf::segment::SegmentIterator;
 use elf::string_table::StringTable;
 use elf::symbol::SymbolTable;
@@ -34,6 +35,9 @@ struct Args {
 
     #[arg(long)]
     dynamic: bool,
+
+    #[arg(long)]
+    relocations: bool,
 
     #[arg(long)]
     notes: bool,
@@ -137,6 +141,35 @@ fn print_dynamic(dyns: DynIterator) {
     println!("{table}");
 }
 
+fn print_rels(rels: RelIterator) {
+    let mut table = Table::new();
+    table.set_header(["r_type", "r_sym", "r_offset"]);
+    for r in rels {
+        let cells: Vec<Cell> = vec![
+            format!("{:#X?}", r.r_type).into(),
+            format!("{:#X?}", r.r_sym).into(),
+            format!("{:#X?}", r.r_offset).into(),
+        ];
+        table.add_row(cells);
+    }
+    println!("{table}");
+}
+
+fn print_relas(relas: RelaIterator) {
+    let mut table = Table::new();
+    table.set_header(["r_type", "r_sym", "r_offset", "r_addend"]);
+    for r in relas {
+        let cells: Vec<Cell> = vec![
+            format!("{:#X?}", r.r_type).into(),
+            format!("{:#X?}", r.r_sym).into(),
+            format!("{:#X?}", r.r_offset).into(),
+            format!("{:#X?}", r.r_addend).into(),
+        ];
+        table.add_row(cells);
+    }
+    println!("{table}");
+}
+
 fn print_notes(notes: NoteIterator) {
     let mut table = Table::new();
     table.set_header(["type", "name", "desc"]);
@@ -226,6 +259,26 @@ fn main() {
                 .section_data_as_notes(shdr)
                 .expect("Failed to read notes section");
             print_notes(notes);
+        }
+    }
+
+    if args.relocations {
+        let shdrs: Vec<elf::section::SectionHeader> = elf_file
+            .section_headers()
+            .expect("Failed to parse section headers")
+            .collect();
+        for ref shdr in shdrs {
+            if shdr.sh_type == elf::gabi::SHT_REL {
+                let rels = elf_file
+                    .section_data_as_rels(shdr)
+                    .expect("Failed to read notes section");
+                print_rels(rels);
+            } else if shdr.sh_type == elf::gabi::SHT_RELA {
+                let relas = elf_file
+                    .section_data_as_relas(shdr)
+                    .expect("Failed to read notes section");
+                print_relas(relas);
+            }
         }
     }
 }
