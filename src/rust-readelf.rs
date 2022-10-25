@@ -4,6 +4,7 @@ extern crate elf;
 
 use clap::Parser;
 use comfy_table::{Cell, Table};
+use elf::dynamic::DynIterator;
 use elf::note::NoteIterator;
 use elf::segment::SegmentIterator;
 use elf::string_table::StringTable;
@@ -30,6 +31,9 @@ struct Args {
 
     #[arg(long)]
     dynamic_symbols: bool,
+
+    #[arg(long)]
+    dynamic: bool,
 
     #[arg(long)]
     notes: bool,
@@ -120,6 +124,19 @@ fn print_symbol_table(symtab: &SymbolTable, strtab: &StringTable) {
     println!("{table}");
 }
 
+fn print_dynamic(dyns: DynIterator) {
+    let mut table = Table::new();
+    table.set_header(["d_tag", "d_ptr/d_val"]);
+    for d in dyns {
+        let cells: Vec<Cell> = vec![
+            format!("{:#X?}", d.d_tag).into(),
+            format!("{:#X?}", d.d_val()).into(),
+        ];
+        table.add_row(cells);
+    }
+    println!("{table}");
+}
+
 fn print_notes(notes: NoteIterator) {
     let mut table = Table::new();
     table.set_header(["type", "name", "desc"]);
@@ -163,7 +180,7 @@ fn main() {
     if args.symbols {
         let tables = elf_file
             .symbol_table()
-            .expect("Failed to get .symtab string table");
+            .expect("Failed to get .symtab and string table");
         match tables {
             Some(tables) => {
                 let (symtab, strtab) = tables;
@@ -176,11 +193,21 @@ fn main() {
     if args.dynamic_symbols {
         let tables = elf_file
             .dynamic_symbol_table()
-            .expect("Failed to get .symtab string table");
+            .expect("Failed to get .dynsym and string table");
         match tables {
             Some(tables) => {
                 let (symtab, strtab) = tables;
                 print_symbol_table(&symtab, &strtab);
+            }
+            None => (),
+        }
+    }
+
+    if args.dynamic {
+        let dyns = elf_file.dynamic_section().expect("Failed to get .dynamic");
+        match dyns {
+            Some(dyns) => {
+                print_dynamic(dyns);
             }
             None => (),
         }
