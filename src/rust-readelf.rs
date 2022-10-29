@@ -9,7 +9,6 @@ use elf::note::NoteIterator;
 use elf::relocation::{RelIterator, RelaIterator};
 use elf::segment::SegmentIterator;
 use elf::string_table::StringTable;
-use elf::symbol::SymbolTable;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -99,7 +98,17 @@ fn print_section_table(sections: elf::section::SectionHeaderIterator, strtab: St
     println!("{table}");
 }
 
-fn print_symbol_table(symtab: &SymbolTable, strtab: &StringTable) {
+fn print_symbol_table(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::File>>) {
+    let (symtab, strtab) = match elf_file
+        .symbol_table()
+        .expect("Failed to get .symtab and string table")
+    {
+        Some(tables) => tables,
+        None => {
+            return;
+        }
+    };
+
     let mut table = Table::new();
     table.set_header([
         "name",
@@ -116,6 +125,79 @@ fn print_symbol_table(symtab: &SymbolTable, strtab: &StringTable) {
             .expect("Failed to get name from string table");
         let cells: Vec<Cell> = vec![
             name.into(),
+            sym.st_value.into(),
+            sym.st_size.into(),
+            sym.st_symtype().into(),
+            sym.st_bind().into(),
+            sym.st_vis().into(),
+            sym.st_shndx.into(),
+        ];
+        table.add_row(cells);
+    }
+    println!("{table}");
+}
+
+fn print_dynamic_symbol_table(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::File>>) {
+    // Get the .dynsym table. If this file doesn't have one, then we're done
+    let (dynsyms, dynstrs) = match elf_file
+        .dynamic_symbol_table()
+        .expect("Failed to get .dynsym and string table")
+    {
+        Some(tables) => tables,
+        None => {
+            return;
+        }
+    };
+
+    // Parse out all the symbols so that we can look up versions for them if needed.
+    let symbols: Vec<(String, elf::symbol::Symbol)> = dynsyms
+        .iter()
+        .map(|sym| {
+            (
+                dynstrs
+                    .get(sym.st_name as usize)
+                    .expect("Failed to get symbol name")
+                    .to_string(),
+                sym,
+            )
+        })
+        .collect();
+
+    let vertab = elf_file
+        .symbol_version_table()
+        .expect("Failed to parse GNU symbol versions");
+
+    let mut table = Table::new();
+    table.set_header([
+        "name",
+        "needs version",
+        "value",
+        "size",
+        "type",
+        "bind",
+        "visibility",
+        "shndx",
+    ]);
+    for (sym_idx, (sym_name, sym)) in symbols.iter().enumerate() {
+        let needs_name = match &vertab {
+            Some(vertab) => {
+                if sym.undefined() {
+                    match vertab
+                        .get_requirement(sym_idx)
+                        .expect("Failed to parse symbol requirement")
+                    {
+                        Some(req) => req.name,
+                        None => "None",
+                    }
+                } else {
+                    "None"
+                }
+            }
+            None => "None",
+        };
+        let cells: Vec<Cell> = vec![
+            sym_name.into(),
+            needs_name.into(),
             sym.st_value.into(),
             sym.st_size.into(),
             sym.st_symtype().into(),
@@ -211,29 +293,11 @@ fn main() {
     }
 
     if args.symbols {
-        let tables = elf_file
-            .symbol_table()
-            .expect("Failed to get .symtab and string table");
-        match tables {
-            Some(tables) => {
-                let (symtab, strtab) = tables;
-                print_symbol_table(&symtab, &strtab);
-            }
-            None => (),
-        }
+        print_symbol_table(&mut elf_file);
     }
 
     if args.dynamic_symbols {
-        let tables = elf_file
-            .dynamic_symbol_table()
-            .expect("Failed to get .dynsym and string table");
-        match tables {
-            Some(tables) => {
-                let (symtab, strtab) = tables;
-                print_symbol_table(&symtab, &strtab);
-            }
-            None => (),
-        }
+        print_dynamic_symbol_table(&mut elf_file);
     }
 
     if args.dynamic {
