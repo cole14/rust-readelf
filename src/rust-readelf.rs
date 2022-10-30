@@ -181,7 +181,7 @@ fn print_dynamic_symbol_table(elf_file: &mut elf::File<elf::CachedReadBytes<std:
     for (sym_idx, (sym_name, sym)) in symbols.iter().enumerate() {
         let needs_name = match &vertab {
             Some(vertab) => {
-                if sym.undefined() {
+                if sym.is_undefined() {
                     match vertab
                         .get_requirement(sym_idx)
                         .expect("Failed to parse symbol requirement")
