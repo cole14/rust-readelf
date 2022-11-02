@@ -153,26 +153,28 @@ fn print_symbol_table(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::Fil
 
     let mut table = Table::new();
     table.set_header([
-        "name",
+        "ndx",
         "value",
         "size",
         "type",
         "bind",
         "visibility",
         "shndx",
+        "name",
     ]);
-    for sym in symtab.iter() {
+    for (ndx, sym) in symtab.iter().enumerate() {
         let name = strtab
             .get(sym.st_name as usize)
             .expect("Failed to get name from string table");
         let cells: Vec<Cell> = vec![
-            name.into(),
-            sym.st_value.into(),
+            ndx.into(),
+            format!("{:#x}", sym.st_value).into(),
             sym.st_size.into(),
             elf::to_str::st_symtype_to_string(sym.st_symtype()).into(),
             elf::to_str::st_bind_to_string(sym.st_bind()).into(),
             elf::to_str::st_vis_to_string(sym.st_vis()).into(),
             sym.st_shndx.into(),
+            name.into(),
         ];
         table.add_row(cells);
     }
