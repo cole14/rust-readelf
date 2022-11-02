@@ -220,14 +220,15 @@ fn print_dynamic_symbol_table(elf_file: &mut elf::File<elf::CachedReadBytes<std:
 
     let mut table = Table::new();
     table.set_header([
-        "name",
-        "needs version",
+        "ndx",
         "value",
         "size",
         "type",
         "bind",
         "visibility",
         "shndx",
+        "needs version",
+        "name",
     ]);
     for (sym_idx, (sym_name, sym)) in symbols.iter().enumerate() {
         let needs_name = match &vertab {
@@ -247,14 +248,15 @@ fn print_dynamic_symbol_table(elf_file: &mut elf::File<elf::CachedReadBytes<std:
             None => "None",
         };
         let cells: Vec<Cell> = vec![
-            sym_name.into(),
-            needs_name.into(),
-            sym.st_value.into(),
+            sym_idx.into(),
+            format!("{:#x}", sym.st_value).into(),
             sym.st_size.into(),
             elf::to_str::st_symtype_to_string(sym.st_symtype()).into(),
             elf::to_str::st_bind_to_string(sym.st_bind()).into(),
             elf::to_str::st_vis_to_string(sym.st_vis()).into(),
             sym.st_shndx.into(),
+            needs_name.into(),
+            sym_name.into(),
         ];
         table.add_row(cells);
     }
