@@ -98,32 +98,34 @@ fn print_section_table(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::Fi
         .expect("Failed to read section table and string table");
     let mut table = Table::new();
     table.set_header([
+        "index",
         "name",
         "sh_type",
-        "sh_flags",
         "sh_addr",
         "sh_offset",
         "sh_size",
+        "sh_entsize",
+        "sh_flags",
         "sh_link",
         "sh_info",
         "sh_addralign",
-        "sh_entsize",
     ]);
-    for shdr in shdrs {
+    for (ndx, shdr) in shdrs.iter().enumerate() {
         let name = strtab
             .get(shdr.sh_name as usize)
             .expect("Failed to get name from string table");
         let cells: Vec<Cell> = vec![
+            ndx.into(),
             name.into(),
             elf::to_str::sh_type_to_string(shdr.sh_type).into(),
+            format!("{:#x}", shdr.sh_addr).into(),
+            format!("{:#x}", shdr.sh_offset).into(),
+            format!("{:#x}", shdr.sh_size).into(),
+            shdr.sh_entsize.into(),
             format!("{:#x}", shdr.sh_flags).into(),
-            shdr.sh_addr.into(),
-            shdr.sh_offset.into(),
-            shdr.sh_size.into(),
             shdr.sh_link.into(),
             shdr.sh_info.into(),
             shdr.sh_addralign.into(),
-            shdr.sh_entsize.into(),
         ];
         table.add_row(cells);
     }
