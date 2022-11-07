@@ -4,7 +4,10 @@ extern crate elf;
 
 use clap::Parser;
 use comfy_table::{Cell, Table};
+use elf::endian::AnyEndian;
+use elf::note::Note;
 use elf::relocation::{RelIterator, RelaIterator};
+use elf::ElfStream;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -49,7 +52,7 @@ fn print_file_header(ehdr: &elf::file::FileHeader) {
     println!(
         "File Header for {} {} Elf {} for {} {}",
         ehdr.class,
-        ehdr.endianness,
+        ehdr.ei_data,
         elf::to_str::e_type_to_string(ehdr.e_type),
         elf::to_str::e_osabi_to_string(ehdr.osabi),
         elf::to_str::e_machine_to_string(ehdr.e_machine)
@@ -63,8 +66,14 @@ fn print_file_header(ehdr: &elf::file::FileHeader) {
 // |_|   |_|  \___/ \__, |_|  \__,_|_| |_| |_|_| |_|\___|\__,_|\__,_|\___|_|  |___/
 //
 
-fn print_program_headers(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::File>>) {
-    let phdrs = elf_file.segments().expect("Failed to parse Segment Table");
+fn print_program_headers(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
+    let phdrs = match elf_file.segments().expect("Failed to parse Segment Table") {
+        Some(phdrs) => phdrs,
+        None => {
+            return;
+        }
+    };
+
     let mut table = Table::new();
     table.set_header([
         "p_type", "p_offset", "p_vaddr", "p_paddr", "p_filesz", "p_memsz", "p_align", "p_flags",
@@ -92,7 +101,7 @@ fn print_program_headers(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::
 // |____/ \___|\___|\__|_|\___/|_| |_|_| |_|\___|\__,_|\__,_|\___|_|  |___/
 //
 
-fn print_section_table(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::File>>) {
+fn print_section_table(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
     let (shdrs, strtab) = elf_file
         .section_headers_with_strtab()
         .expect("Failed to read section table and string table");
@@ -140,7 +149,7 @@ fn print_section_table(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::Fi
 //        |___/
 //
 
-fn print_symbol_table(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::File>>) {
+fn print_symbol_table(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
     let (symtab, strtab) = match elf_file
         .symbol_table()
         .expect("Failed to get .symtab and string table")
@@ -188,7 +197,7 @@ fn print_symbol_table(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::Fil
 // |____/ \__, |_| |_|____/ \__, |_| |_| |_|___/
 //        |___/             |___/
 
-fn print_dynamic_symbol_table(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::File>>) {
+fn print_dynamic_symbol_table(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
     // Get the .dynsym table. If this file doesn't have one, then we're done
     let (dynsyms, dynstrs) = match elf_file
         .dynamic_symbol_table()
@@ -271,7 +280,7 @@ fn print_dynamic_symbol_table(elf_file: &mut elf::File<elf::CachedReadBytes<std:
 //            |___/
 //
 
-fn print_dynamic(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::File>>) {
+fn print_dynamic(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
     let dyns = match elf_file.dynamic_section().expect("Failed to get .dynamic") {
         Some(dyns) => dyns,
         None => {
@@ -298,7 +307,7 @@ fn print_dynamic(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::File>>) 
 // |_|  \___|_|\___/ \___|___/
 //
 
-fn print_rels(rels: RelIterator) {
+fn print_rels(rels: RelIterator<AnyEndian>) {
     let mut table = Table::new();
     table.set_header(["r_type", "r_sym", "r_offset"]);
     for r in rels {
@@ -312,7 +321,7 @@ fn print_rels(rels: RelIterator) {
     println!("{table}");
 }
 
-fn print_relas(relas: RelaIterator) {
+fn print_relas(relas: RelaIterator<AnyEndian>) {
     let mut table = Table::new();
     table.set_header(["r_type", "r_sym", "r_offset", "r_addend"]);
     for r in relas {
@@ -327,21 +336,21 @@ fn print_relas(relas: RelaIterator) {
     println!("{table}");
 }
 
-fn print_relocations(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::File>>) {
+fn print_relocations(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
     let shdrs: Vec<elf::section::SectionHeader> = elf_file
         .section_headers()
-        .expect("Failed to parse section headers")
         .iter()
-        .filter(|shdr| shdr.sh_type == elf::gabi::SHT_REL || shdr.sh_type == elf::gabi::SHT_RELA)
+        .filter(|shdr| shdr.sh_type == elf::abi::SHT_REL || shdr.sh_type == elf::abi::SHT_RELA)
+        .map(|shdr| *shdr)
         .collect();
 
     for ref shdr in shdrs {
-        if shdr.sh_type == elf::gabi::SHT_REL {
+        if shdr.sh_type == elf::abi::SHT_REL {
             let rels = elf_file
                 .section_data_as_rels(shdr)
                 .expect("Failed to read notes section");
             print_rels(rels);
-        } else if shdr.sh_type == elf::gabi::SHT_RELA {
+        } else if shdr.sh_type == elf::abi::SHT_RELA {
             let relas = elf_file
                 .section_data_as_relas(shdr)
                 .expect("Failed to read notes section");
@@ -357,30 +366,58 @@ fn print_relocations(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::File
 // |_| |_|\___/ \__\___||___/
 //
 
-fn print_notes(elf_file: &mut elf::File<elf::CachedReadBytes<std::fs::File>>) {
-    let note_shdrs: Vec<elf::section::SectionHeader> = elf_file
-        .section_headers()
-        .expect("Failed to parse section headers")
+fn print_notes(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
+    let (shdrs, strtab) = elf_file
+        .section_headers_with_strtab()
+        .expect("strtab should be readable");
+
+    let shdrs_with_names: Vec<_> = shdrs
         .iter()
-        .filter(|shdr| shdr.sh_type == elf::gabi::SHT_NOTE)
+        .filter(|shdr| shdr.sh_type == elf::abi::SHT_NOTE)
+        .map(|shdr| {
+            let name = strtab
+                .get(shdr.sh_name as usize)
+                .expect("section name should parse");
+            (name.to_string(), *shdr)
+        })
         .collect();
 
-    for ref shdr in note_shdrs {
+    for (sh_name, shdr) in shdrs_with_names {
         let notes = elf_file
-            .section_data_as_notes(shdr)
+            .section_data_as_notes(&shdr)
             .expect("Failed to read notes section");
 
-        let mut table = Table::new();
-        table.set_header(["type", "name", "desc"]);
+        println!("Displaying notes found in: {sh_name}");
         for note in notes {
-            let cells: Vec<Cell> = vec![
-                note.n_type.into(),
-                note.name.into(),
-                format!("{:02X?}", note.desc).into(),
-            ];
-            table.add_row(cells);
+            match note {
+                Note::GnuAbiTag(abi) => {
+                    let os_str = elf::to_str::note_abi_tag_os_to_str(abi.os)
+                        .map_or(format!("{}", abi.os), |val| val.to_string());
+                    println!(
+                        "    OS: {os_str}, ABI: {}.{}.{}",
+                        abi.major, abi.minor, abi.subminor
+                    );
+                }
+                Note::GnuBuildId(build_id) => {
+                    print!("    Build ID: ");
+                    for byte in build_id.0 {
+                        print!("{byte:02x}");
+                    }
+                    println!("");
+                }
+                Note::Unknown(any) => {
+                    let mut table = Table::new();
+                    table.set_header(["type", "name", "desc"]);
+                    let cells: Vec<Cell> = vec![
+                        any.n_type.into(),
+                        any.name.into(),
+                        format!("{:02X?}", any.desc).into(),
+                    ];
+                    table.add_row(cells);
+                    println!("{table}");
+                }
+            }
         }
-        println!("{table}");
     }
 }
 
@@ -391,7 +428,7 @@ fn main() {
     let io = std::fs::File::open(path).expect("Could not open file");
 
     let mut elf_file =
-        elf::File::open_stream(elf::CachedReadBytes::new(io)).expect("Failed to open ELF stream");
+        ElfStream::<AnyEndian, _>::open_stream(io).expect("Failed to open ELF stream");
 
     if args.file_header {
         print_file_header(&elf_file.ehdr);
