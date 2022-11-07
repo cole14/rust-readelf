@@ -67,18 +67,11 @@ fn print_file_header(ehdr: &elf::file::FileHeader) {
 //
 
 fn print_program_headers(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
-    let phdrs = match elf_file.segments().expect("Failed to parse Segment Table") {
-        Some(phdrs) => phdrs,
-        None => {
-            return;
-        }
-    };
-
     let mut table = Table::new();
     table.set_header([
         "p_type", "p_offset", "p_vaddr", "p_paddr", "p_filesz", "p_memsz", "p_align", "p_flags",
     ]);
-    for phdr in phdrs {
+    for phdr in elf_file.segments() {
         let cells: Vec<Cell> = vec![
             elf::to_str::p_type_to_string(phdr.p_type).into(),
             format!("{:#x}", phdr.p_offset).into(),
