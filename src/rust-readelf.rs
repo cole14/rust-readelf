@@ -284,8 +284,10 @@ fn print_dynamic(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
     let mut table = Table::new();
     table.set_header(["d_tag", "d_ptr/d_val"]);
     for d in dyns {
+        let d_tag_str = elf::to_str::d_tag_to_str(d.d_tag)
+            .map_or(format!("{:#X?}", d.d_tag), |val| val.to_string());
         let cells: Vec<Cell> = vec![
-            format!("{:#X?}", d.d_tag).into(),
+            format!("{d_tag_str}").into(),
             format!("{:#X?}", d.d_val()).into(),
         ];
         table.add_row(cells);
