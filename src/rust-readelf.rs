@@ -274,7 +274,7 @@ fn print_dynamic_symbol_table(elf_file: &mut ElfStream<AnyEndian, std::fs::File>
 //
 
 fn print_dynamic(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
-    let dyns = match elf_file.dynamic_section().expect("Failed to get .dynamic") {
+    let dyns = match elf_file.dynamic().expect("Failed to get .dynamic") {
         Some(dyns) => dyns,
         None => {
             return;
@@ -283,7 +283,7 @@ fn print_dynamic(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
 
     let mut table = Table::new();
     table.set_header(["d_tag", "d_ptr/d_val"]);
-    for d in dyns {
+    for d in dyns.iter() {
         let d_tag_str = elf::to_str::d_tag_to_str(d.d_tag)
             .map_or(format!("{:#X?}", d.d_tag), |val| val.to_string());
         let cells: Vec<Cell> = vec![
