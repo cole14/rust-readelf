@@ -98,6 +98,7 @@ fn print_section_table(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
     let (shdrs, strtab) = elf_file
         .section_headers_with_strtab()
         .expect("Failed to read section table and string table");
+    let (shdrs, strtab) = (shdrs, strtab.unwrap());
     let mut table = Table::new();
     table.set_header([
         "index",
@@ -365,6 +366,7 @@ fn print_notes(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
     let (shdrs, strtab) = elf_file
         .section_headers_with_strtab()
         .expect("strtab should be readable");
+    let (shdrs, strtab) = (shdrs, strtab.unwrap());
 
     let shdrs_with_names: Vec<_> = shdrs
         .iter()
