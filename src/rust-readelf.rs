@@ -7,6 +7,7 @@ use comfy_table::{Cell, Table};
 use elf::endian::AnyEndian;
 use elf::note::Note;
 use elf::relocation::{RelIterator, RelaIterator};
+use elf::to_str::{e_machine_to_human_str, e_osabi_to_string, e_type_to_human_str};
 use elf::ElfStream;
 use std::path::PathBuf;
 
@@ -48,14 +49,41 @@ struct Args {
 // |_|   |_|_|\___|_| |_|\___|\__,_|\__,_|\___|_|
 //
 
-fn print_file_header(ehdr: &elf::file::FileHeader) {
+fn print_file_header(ehdr: &elf::file::FileHeader<AnyEndian>) {
+    let e_type_str = match e_type_to_human_str(ehdr.e_type) {
+        Some(s) => s.to_string(),
+        None => format!("e_type({:#x})", ehdr.e_type),
+    };
+
+    let e_machine_str = match e_machine_to_human_str(ehdr.e_machine) {
+        Some(s) => s.to_string(),
+        None => format!("e_machine({:#x})", ehdr.e_machine),
+    };
+
+    println!("File Header:");
+    println!("  Class: {:?}", ehdr.class);
+    println!("  Endianness: {:?}", ehdr.endianness);
+    println!("  Object Type: {e_type_str}");
+    println!("  Arch: {e_machine_str}");
+    println!("  OSABI: {}", e_osabi_to_string(ehdr.osabi));
+    println!("  Entry point address: {:#x}", ehdr.e_entry);
     println!(
-        "File Header for {} {} Elf {} for {} {}",
-        ehdr.class,
-        ehdr.ei_data,
-        elf::to_str::e_type_to_string(ehdr.e_type),
-        elf::to_str::e_osabi_to_string(ehdr.osabi),
-        elf::to_str::e_machine_to_string(ehdr.e_machine)
+        "  Start of program headers: {:#x} (bytes into file)",
+        ehdr.e_phoff
+    );
+    println!(
+        "  Start of section headers: {:#x} (bytes into file)",
+        ehdr.e_shoff
+    );
+    println!("  Flags: {:#x}", ehdr.e_flags);
+    println!("  Size of this header: {:#x}", ehdr.e_ehsize);
+    println!("  Size of program header: {:#x}", ehdr.e_phentsize);
+    println!("  Number of program headers: {:#x}", ehdr.e_phnum);
+    println!("  Size of section header: {:#x}", ehdr.e_shentsize);
+    println!("  Number of section headers: {:#x}", ehdr.e_shnum);
+    println!(
+        "  Section headers string table section index: {}",
+        ehdr.e_shstrndx
     );
 }
 
