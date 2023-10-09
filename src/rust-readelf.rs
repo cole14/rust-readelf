@@ -435,7 +435,7 @@ fn print_notes(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
                     table.set_header(["type", "name", "desc"]);
                     let cells: Vec<Cell> = vec![
                         any.n_type.into(),
-                        any.name.into(),
+                        format!("{:?}", any.name).into(),
                         format!("{:02X?}", any.desc).into(),
                     ];
                     table.add_row(cells);
