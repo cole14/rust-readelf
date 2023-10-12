@@ -316,7 +316,7 @@ fn print_dynamic(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
         let d_tag_str = elf::to_str::d_tag_to_str(d.d_tag)
             .map_or(format!("{:#X?}", d.d_tag), |val| val.to_string());
         let cells: Vec<Cell> = vec![
-            format!("{d_tag_str}").into(),
+            d_tag_str.to_string().into(),
             format!("{:#X?}", d.d_val()).into(),
         ];
         table.add_row(cells);
@@ -365,7 +365,7 @@ fn print_relocations(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
         .section_headers()
         .iter()
         .filter(|shdr| shdr.sh_type == elf::abi::SHT_REL || shdr.sh_type == elf::abi::SHT_RELA)
-        .map(|shdr| *shdr)
+        .copied()
         .collect();
 
     for ref shdr in shdrs {
@@ -428,7 +428,7 @@ fn print_notes(elf_file: &mut ElfStream<AnyEndian, std::fs::File>) {
                     for byte in build_id.0 {
                         print!("{byte:02x}");
                     }
-                    println!("");
+                    println!();
                 }
                 Note::Unknown(any) => {
                     let mut table = Table::new();
