@@ -7,6 +7,7 @@ repository = "https://github.com/cole14/rust-readelf/"
 description = "A pure-rust implementation of the binutils utility readelf"
 keywords = ["elf", "readelf"]
 readme = "README.md"
+edition = "2021"
 
 [[bin]]
 name = "rust-readelf"
